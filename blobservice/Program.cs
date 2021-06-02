@@ -1,6 +1,8 @@
 ﻿using System;
 using Azure.Storage.Blobs;
 using System.IO;
+using Azure.Storage.Blobs.Specialized;
+using Azure.Storage.Blobs.Models;
 
 namespace blobservice
 {
@@ -13,21 +15,37 @@ namespace blobservice
         {
             BlobServiceClient _service_client = new BlobServiceClient(_connection_string);
             BlobContainerClient _container_client = _service_client.GetBlobContainerClient(_container_name);
-            BlobClient _blobclient = _container_client.GetBlobClient(_blob_name);
-
+            BlobClient _blob_client = _container_client.GetBlobClient(_blob_name);
+            
             MemoryStream _memory = new MemoryStream();
-            _blobclient.DownloadTo(_memory);
-            _memory.Position = 0;
 
+            _blob_client.DownloadTo(_memory);
+            _memory.Position = 0;
             StreamReader _reader = new StreamReader(_memory);
             Console.WriteLine(_reader.ReadToEnd());
-            
+
+            BlobLeaseClient _blob_lease_client = _blob_client.GetBlobLeaseClient();
+            BlobLease _lease = _blob_lease_client.Acquire(TimeSpan.FromSeconds(30));
+            Console.WriteLine($"The lease is {_lease.LeaseId}");
+
+
             StreamWriter _writer = new StreamWriter(_memory);
-            _writer.Write("This is a change version1");
+            _writer.Write("This is a change");
             _writer.Flush();
+
+            BlobUploadOptions _blobUploadOptions = new BlobUploadOptions()
+            {
+                Conditions = new BlobRequestConditions()
+                {
+                    LeaseId = _lease.LeaseId
+                }
+            };
+
             _memory.Position = 0;
-            _blobclient.Upload(_memory,true);
-            Console.WriteLine("change made");
+            _blob_client.Upload(_memory, _blobUploadOptions);
+            _blob_lease_client.Release();
+
+            Console.WriteLine("Change made");
             Console.ReadKey();
         }
     }
