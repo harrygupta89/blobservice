@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "blobservice": {
+      "commandName": "Project"
+    },
+    "Docker": {
+      "commandName": "Docker"
+    }
+  }
+}
