@@ -1,7 +1,6 @@
 ﻿using System;
 using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
-using Azure.Storage.Sas;
+using System.IO;
 
 namespace blobservice
 {
@@ -10,37 +9,29 @@ namespace blobservice
         private static string _container_name = "data";
         private static string _connection_string = "DefaultEndpointsProtocol=https;AccountName=appstore200089;AccountKey=SGnsTS1c1IT6cYeBWsNu3LYywQ/cYj9WtKWjudpUzRRNjIekbj1gx53thQQHZ6dDryuym2kQd3GKWmHs8rA9Og==;EndpointSuffix=core.windows.net";
         private static string _blob_name = "Program.cs";
-        private static string _location = "C:\\tmp\\Program.cs";
-        
         static void Main(string[] args)
-        {
-            GenerateSAS();
-            ReadBlob();
-            Console.ReadKey();
-        }
-
-        public static void  ReadBlob()
-        {
-            Uri _blob_uri = GenerateSAS();
-            BlobClient _client = new BlobClient(_blob_uri);
-            _client.DownloadTo(_location);
-        }
-        public static Uri GenerateSAS()
         {
             BlobServiceClient _service_client = new BlobServiceClient(_connection_string);
             BlobContainerClient _container_client = _service_client.GetBlobContainerClient(_container_name);
             BlobClient _blobclient = _container_client.GetBlobClient(_blob_name);
-            BlobSasBuilder _builder = new BlobSasBuilder()
-            {
-                BlobContainerName = _container_name,
-                BlobName = _blob_name,
-                Resource = "b"    // we are creating the SAS for Blob
-            };
 
-            _builder.SetPermissions(BlobSasPermissions.Read | BlobSasPermissions.List);
-            _builder.ExpiresOn = DateTimeOffset.UtcNow.AddHours(1);
-            return _blobclient.GenerateSasUri(_builder);
+            MemoryStream _memory = new MemoryStream();
+            _blobclient.DownloadTo(_memory);
+            _memory.Position = 0;
 
+            StreamReader _reader = new StreamReader(_memory);
+            Console.WriteLine(_reader.ReadToEnd());
+            
+            StreamWriter _writer = new StreamWriter(_memory);
+            _writer.Write("This is a change version1");
+            _writer.Flush();
+            _memory.Position = 0;
+            _blobclient.Upload(_memory,true);
+            Console.WriteLine("change made");
+            Console.ReadKey();
         }
     }
 }
+
+
+
